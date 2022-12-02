@@ -1,0 +1,265 @@
+---
+title: "11_04_22_lab"
+author: "Andy Tong"
+format: html
+---
+
+```{r}
+library(BiocManager)
+library(DESeq2)
+```
+
+```{r}
+counts <- read.csv("airway_scaledcounts.csv", row.names=1)
+metadata <-  read.csv("airway_metadata.csv")
+```
+```{r}
+head(counts)
+head(metadata)
+```
+Q1. How many genes are in this dataset? 
+```{r}
+cat("We have", ncol(counts), "genes in this dataset")
+```
+
+Q2. How many ‘control’ cell lines do we have? 
+```{r}
+cat("We have", ncol(metadata[metadata$dex == "control",]), "control cell lines in this dataset")
+```
+```{r}
+control <- metadata[metadata[,"dex"]=="control",]
+control.counts <- counts[ ,control$id]
+control.mean <- rowSums( control.counts )/4 
+head(control.mean)
+```
+```{r}
+library(dplyr)
+control <- metadata %>% filter(dex=="control")
+control.counts <- counts %>% select(control$id) 
+control.mean <- rowSums(control.counts)/4
+head(control.mean)
+```
+Q3. How would you make the above code in either approach more robust?
+I would change the 4 to nrow(control) This would make the process more robust to different sized datasets. Currently it is hard coded to only be able to deal with specifically 4 controls. Outside of that someone would have to find out how many controls there are and manually change it. That changes the code to this for the 1st process:
+```{r}
+control <- metadata[metadata[,"dex"]=="control",]
+control.counts <- counts[ ,control$id]
+control.mean <- rowSums( control.counts )/nrow(control)
+head(control.mean)
+```
+
+Q4. Follow the same procedure for the treated samples (i.e. calculate the mean per gene across drug treated samples and assign to a labeled vector called treated.mean)
+
+```{r}
+treated <- metadata[metadata[,"dex"]=="treated",]
+treated.counts <- counts[ ,treated$id]
+treated.mean <- rowSums( treated.counts )/nrow(treated)
+head(treated.mean)
+```
+```{r}
+meancounts <- data.frame(control.mean, treated.mean)
+```
+Q5 (a). Create a scatter plot showing the mean of the treated samples against the mean of the control samples. Your plot should look something like the following.
+```{r}
+library(ggplot2)
+```
+```{r}
+plot(control.mean, treated.mean)
+```
+Q5 (b).You could also use the ggplot2 package to make this figure producing the plot below. What geom_?() function would you use for this plot? 
+geom_point()
+```{r}
+ggplot(meancounts, aes(control.mean, treated.mean))+
+  geom_point(alpha = 0.3)
+
+```
+Q6. Try plotting both axes on a log scale. What is the argument to plot() that allows you to do this? 
+scale_x_continuous and scale_y_continuous are the additional functions needed for ggplot
+```{r}
+ggplot(meancounts, aes(control.mean, treated.mean))+
+  geom_point(alpha = 0.3)+
+  scale_x_continuous(trans="log2")+
+  scale_y_continuous(trans="log2")
+```
+```{r}
+meancounts$log2fc <- log2(meancounts[,"treated.mean"]/meancounts[,"control.mean"])
+head(meancounts)
+```
+Q7. What is the purpose of the arr.ind argument in the which() function call above? Why would we then take the first column of the output and need to call the unique() function?
+First we are looking at which values are 0 and then everytime one is found, arr.ind allows us to know which rowname each row is associated with. Then unique allows us to make sure nothing is double counted if there are 0s in both columns.  
+
+```{r}
+zero.vals <- which(meancounts[,1:2]==0, arr.ind=TRUE)
+
+to.rm <- unique(zero.vals[,1])
+mycounts <- meancounts[-to.rm,]
+head(mycounts)
+```
+
+```{r}
+up.ind <- mycounts$log2fc > 2
+down.ind <- mycounts$log2fc < (-2)
+```
+Q8. Using the up.ind vector above can you determine how many up regulated genes we have at the greater than 2 fc level?
+```{r}
+cat("There are", sum(up.ind), "upregulated genes at a greater than 2x fold change level")
+```
+
+Q9. Using the down.ind vector above can you determine how many down regulated genes we have at the greater than 2 fc level? 
+```{r}
+cat("There are", sum(down.ind), "upregulated genes at a greater than 2x fold change level")
+```
+Q10. Do you trust these results? Why or why not?
+I do trust that all the results are true to the fact that there is a 2x fold change, but in the greater context, I don't have enough information to draw conclusions yet.
+
+```{r}
+library(DESeq2)
+citation("DESeq2")
+```
+```{r}
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~dex)
+dds
+```
+```{r}
+dds <- DESeq(dds)
+```
+```{r}
+res <- results(dds)
+res
+```
+
+```{r}
+summary(res)
+```
+```{r}
+res05 <- results(dds, alpha=0.05)
+summary(res05)
+```
+
+```{r}
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+```
+```{r}
+columns(org.Hs.eg.db)
+```
+
+```{r}
+res$symbol <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res), # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="SYMBOL",          # The new format we want to add
+                     multiVals="first")
+```
+
+```{r}
+head(res)
+```
+Q11. Run the mapIds() function two more times to add the Entrez ID and UniProt accession and GENENAME as new columns called res$entrez, res$uniprot and res$genename.
+```{r}
+res$entrez <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res), # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="ENTREZID",          # The new format we want to add
+                     multiVals="first")
+res$uniprot <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res), # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="UNIPROT",          # The new format we want to add
+                     multiVals="first")
+res$genename <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res), # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="GENENAME",          # The new format we want to add
+                     multiVals="first")
+```
+```{r}
+ord <- order( res$padj )
+#View(res[ord,])
+head(res[ord,])
+```
+```{r}
+write.csv(res[ord,], "deseq_results.csv")
+```
+```{r}
+plot( res$log2FoldChange,  -log(res$padj), 
+      xlab="Log2(FoldChange)",
+      ylab="-Log(P-value)")
+```
+```{r}
+plot( res$log2FoldChange,  -log(res$padj), 
+ ylab="-Log(P-value)", xlab="Log2(FoldChange)")
+
+# Add some cut-off lines
+abline(v=c(-2,2), col="darkgray", lty=2)
+abline(h=-log(0.05), col="darkgray", lty=2)
+```
+```{r}
+# Setup our custom point color vector 
+mycols <- rep("gray", nrow(res))
+mycols[ abs(res$log2FoldChange) > 2 ]  <- "red" 
+
+inds <- (res$padj < 0.01) & (abs(res$log2FoldChange) > 2 )
+mycols[ inds ] <- "blue"
+
+# Volcano plot with custom colors 
+plot( res$log2FoldChange,  -log(res$padj), 
+ col=mycols, ylab="-Log(P-value)", xlab="Log2(FoldChange)" )
+
+# Cut-off lines
+abline(v=c(-2,2), col="gray", lty=2)
+abline(h=-log(0.1), col="gray", lty=2)
+```
+```{r}
+library(EnhancedVolcano)
+```
+```{r}
+x <- as.data.frame(res)
+
+EnhancedVolcano(x,
+    lab = x$symbol,
+    x = 'log2FoldChange',
+    y = 'pvalue')
+```
+```{r}
+library(pathview)
+library(gage)
+library(gageData)
+
+data(kegg.sets.hs)
+
+# Examine the first 2 pathways in this kegg set for humans
+head(kegg.sets.hs, 2)
+```
+```{r}
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez
+head(foldchanges)
+```
+```{r}
+# Get the results
+keggres = gage(foldchanges, gsets=kegg.sets.hs)
+attributes(keggres)
+```
+```{r}
+head(keggres$less, 3)
+```
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa05310")
+```
+Q12. Can you do the same procedure as above to plot the pathview figures for the top 2 down-reguled pathways?
+
+Yes I can do the same for both of these. 
+```{r}
+head(keggres$less, 3)
+```
+Type I diabetes mellitus
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa04940")
+```
+Graft-versus-host disease
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa05332")
+```

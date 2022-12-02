@@ -1,0 +1,56 @@
+---
+title: "11_16_22_lab"
+author: "Andy Tong"
+format: html
+---
+
+Q. What does the star character accomplish here? Ask Barry, or your class neighbor, if you are not sure!
+
+It acts as a variable where it takes anything that ends in .faa.gz
+
+Q. How many sequences are in this mouse.1.protein.faa file? Hint: Try using grep to figure this out…
+Using grep -c ">" mouse.1.protein.faa, we get 65154
+Using grep -c ">" mouse.2.protein.faa, we get 30379
+
+Or 
+
+grep -c ">" mouse.* gives us
+mouse.1.protein.faa:65154
+mouse.2.protein.faa:30379
+
+Q. What happens if you run the above command without the > mm-first.fa part?
+
+>YP_220550.1 NADH dehydrogenase subunit 1 (mitochondrion) [Mus musculus domesticus]
+MFFINILTLLVPILIAMAFLTLVERKILGYMQLRKGPNIVGPYGILQPFADAMKLFMKEPMRPLTTSMSLFIIAPTLSLT
+LALSLWVPLPMPHPLINLNLGILFILATSSLSVYSILWSGWASNSKYSLFGALRAVAQTISYEVTMAIILLSVLLMNGSY
+SLQTLITTQEHMWLLLPAWPMAMMWFISTLAETNRAPFDLTEGESELVSGFNVEYAAGPFALFFMAEYTNIILMNALTTI
+IFLGPLYYINLPELYSTNFMMEALLLSSTFLWIRASYPRFRYDQLMHLLWKNFLPLTLALCMWHISLPIFTAGVPPYM
+>YP_220551.1 NADH dehydrogenase subunit 2 (mitochondrion) [Mus musculus domesticus]
+MNPITLAIIYFTIFLGPVITMSSTNLMLMWVGLEFSLLAIIPMLINKKNPRSTEAATKYFVTQATASMIILLAIVLNYKQ
+LGTWMFQQQTNGLILNMTLMALSMKLGLAPFHFWLPEVTQGIPLHMGLILLTWQKIAPLSILIQIYPLLNSTIILMLAIT
+SIFMGAWGGLNQTQMRKIMAYSSIAHMGWMLAILPYNPSLTLLNLMIYIILTAPMFMALMLNNSMTINSISLLWNKTPAM
+LTMISLMLLSLGGLPPLTGFLPKWIIITELMKNNCLIMATLMAMMALLNLFFYTRLIYSTSLTMFPTNNNSKMMTHQTKT
+KPNLMFSTLAIMSTMTLPLAPQLIT
+
+Q. What happens if you were to use two ‘>’ symbols (i.e. >> mm-first.fa)?
+
+I don;t see a difference (CORRECT THIS LATER)
+
+Q.How would you determine how many sequences are in the mm-second.fa file?
+grep -c ">" mm-second.fa
+96
+
+
+ssh -i "ajtong_bggn213.pem" ubuntu@ec2-54-184-182-165.us-west-2.compute.amazonaws.com
+
+scp -i ~/Downloads/ajtong_bggn213.pem ubuntu@ec2-54-184-182-165.us-west-2.compute.amazonaws.com:/home/ubuntu/work/mm-second.x.zebrafish.txt ./class15
+
+scp -i 
+myaln.fa
+
+
+scp -i "myaln.fa" biglabcluster.ucsd.edu
+
+aln <- read.fasta("~/Downloads/myaln.fa")
+
+
